@@ -15,14 +15,15 @@ from torchvision import transforms
 
 from utils import (block_idct2d, inverse_arnold_transform)
 
-# 20 identidades de origem usadas pelos deepfakes de troca de rosto
-ORIGENS_FACESWAP_DIR = "/home/cnt-computadores/Área de trabalho/FelipeNascimento/models_deepfake/origens_faceswap"
 from watermark_embedding import (WatermarkEmbedding, watermark_embedding_tensor)
 from watermark_extraction import WatermarkExtraction
 
 from watermark_extraction import WatermarkExtraction
 from attacks import AttackLayer
-from deepfake_attack import DeepFakeAttack
+from deepfake_attack import DeepFakeAttack, DEEPFAKE_ROOT
+
+# 20 identidades de origem usadas pelos deepfakes de troca de rosto
+ORIGENS_FACESWAP_DIR = os.path.join(DEEPFAKE_ROOT, "origens_faceswap")
 
 from torchmetrics.functional.image import structural_similarity_index_measure
 from tabulate import tabulate
@@ -252,13 +253,12 @@ def main():
     # -------------------------
     # Origens da troca de rosto (uma por imagem, mesmo gênero, sorteio fixo)
     # -------------------------
-    sys.path.insert(0, ORIGENS_FACESWAP_DIR)
-    from pares_origem import gerar_pares, salvar_pares, genero_pelo_caminho
-
     # só com deepfakes: o sorteio precisa do gênero (pastas female/ e male/),
     # que outros conjuntos (ex.: LFW) não têm
     pairs_csv = os.path.join(args.output, "pares_origem.csv")
     if args.deepfake:
+        sys.path.insert(0, ORIGENS_FACESWAP_DIR)
+        from pares_origem import gerar_pares, salvar_pares, genero_pelo_caminho
         salvar_pares(
             gerar_pares([(os.path.splitext(os.path.basename(p))[0], genero_pelo_caminho(p)) for p in celeba_images]),
             pairs_csv

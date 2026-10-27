@@ -32,9 +32,8 @@ from attacks import AttackLayer
 from watermark_embedding import WatermarkEmbedding, watermark_embedding_tensor
 from watermark_extraction import WatermarkExtraction
 
-CHECKPOINT = "output_grade/v3_finetune_cosine/checkpoints/watermark_Y_DCT_DWT_12102026_08:55:13_final.pth"
-VAL_DIR = ("/home/cnt-computadores/Área de trabalho/FelipeNascimento/models_watermark-my/versoes_iniciais/"
-           "Robust-Hybrid-Watermarking-cnn-256/Dataset/celeba_hq/val")
+CHECKPOINT = "output/checkpoints/v3_final.pth"
+VAL_DIR = "Dataset/celeba_hq/val"
 
 ATAQUES = [
     ("sem ataque", "none", {}),

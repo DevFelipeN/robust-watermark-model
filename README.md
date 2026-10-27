@@ -2,9 +2,7 @@
 
 Marca d'água invisível de **30 bits** embutida no canal de luminância (Y) de imagens **256×256**, no domínio DWT → DCT, por uma CNN treinada junto com um extrator robusto a ataques. Pensada para fotos de rosto (CelebA-HQ): a marca sobrevive a compressão, filtros, ruído, redimensionamento e às manipulações por deepfake testadas, e serve para **rastrear a origem** da imagem.
 
-Opcionalmente, um código corretor de erros **BCH** transforma os 30 bits em 15 bits de mensagem + 15 de paridade e corrige até 3 bits errados.
-
-> Este README cobre só a **versão atual**. A história do projeto (versões 1 e 2, experimentos e por que cada escolha foi feita) está em [`my_README.md`](my_README.md) e em `../Robust-Hybrid-Watermarking-cnn-256/my_README.md`.
+> Este README cobre só a **versão atual**. A história do projeto (versões 1 e 2, experimentos e por que cada escolha foi feita) está em [`my_README.md`](my_README.md).
 
 ## Como funciona
 
@@ -63,7 +61,7 @@ Figura gerada por `gerar_figura_arquitetura.py` (PNG e PDF em `my_tests/arquitet
 
 | Item | Valor |
 |---|---|
-| Checkpoint | `output_grade/v3_finetune_cosine/checkpoints/watermark_Y_DCT_DWT_12102026_08:55:13_final.pth` |
+| Checkpoint | `output/checkpoints/v3_final.pth` (12 MB, incluído no repositório) |
 | Resolução / marca | 256×256 / 30 bits |
 | Alpha | **5** (salvo no checkpoint) |
 | Treino | etapa 1: do zero, 50 épocas, LR 5e-5 (≈1h50); etapa 2: +15 épocas com LR em cosseno 2e-5 → 1e-6 (≈32 min) — numa RTX 3090 |
@@ -80,7 +78,7 @@ conda env create -f environment.yml
 conda activate watermark-v3
 ```
 
-O `environment.yml` traz as versões usadas (Python 3.12, PyTorch 2.11 com CUDA 12.8, `pytorch_wavelets`, `torch-dct`, `kornia`, `lpips`, `DISTS-pytorch`, `torchmetrics`, `bchlib`, …). Para outra versão de CUDA, troque o índice do PyTorch no arquivo. Na primeira execução, o LPIPS e o DISTS baixam os próprios pesos.
+O `environment.yml` traz as versões usadas (Python 3.12, PyTorch 2.11 com CUDA 12.8, `pytorch_wavelets`, `torch-dct`, `kornia`, `lpips`, `DISTS-pytorch`, `torchmetrics`, …). Para outra versão de CUDA, troque o índice do PyTorch no arquivo. Na primeira execução, o LPIPS e o DISTS baixam os próprios pesos.
 
 ### 2. Dataset
 
@@ -97,18 +95,18 @@ Dataset/
         └── male/
 ```
 
-Uma fonte é o Kaggle (`kaggle datasets download -d lamsimon/celebahq`), que já vem em `train/` e `val/` com `female/` e `male/`. As imagens são redimensionadas para 256×256 pelos scripts. Neste diretório, `Dataset/` é um link para o dataset do projeto original.
+Crie a pasta `Dataset/` na raiz do projeto (ela não está no repositório: a licença do CelebA-HQ não permite redistribuir as imagens). Uma fonte é o Kaggle (`kaggle datasets download -d lamsimon/celebahq`), que já vem em `train/` e `val/` com `female/` e `male/`. As imagens são redimensionadas para 256×256 pelos scripts. `Dataset/` também pode ser um link simbólico para um dataset que já esteja em outro lugar (`ln -s /caminho/do/dataset Dataset`).
 
 ### 3. Modelo treinado
 
-O checkpoint do modelo atual fica em `output_grade/v3_finetune_cosine/checkpoints/`. Para treinar de novo, veja [Treino](#treino).
+O checkpoint do modelo atual já vem no repositório, em `output/checkpoints/v3_final.pth` (cópia do `*_final.pth` da etapa 2 do treino; inclui o estado do otimizador, então serve também para continuar o treino com `--resume`). Os scripts `gerar_imagens_ataques.py` e `analisar_se.py` já o usam por padrão. Para treinar de novo, veja [Treino](#treino).
 
 ## Uso
 
 Todos os comandos rodam de dentro desta pasta, com o ambiente ativado. Para encurtar:
 
 ```bash
-CK="output_grade/v3_finetune_cosine/checkpoints/watermark_Y_DCT_DWT_12102026_08:55:13_final.pth"
+CK="output/checkpoints/v3_final.pth"
 ```
 
 ### Avaliar a robustez (métricas principais)
@@ -152,27 +150,7 @@ python evaluate.py --models_path "$CK" --image_resolution 256 \
     --deepfake true --limit 100
 ```
 
-Aplica também 7 deepfakes nas imagens marcadas: DiffAE (atributo `Young`), BlendFace, SimSwap, InSwapper, StarGAN (`Male`), HiSD (óculos) e LivePortrait. Cada imagem recebe uma identidade de origem fixa do mesmo gênero (`pares_origem.csv`). Exige os modelos e ambientes conda de cada deepfake em `../../models_deepfake/` (caminhos em `deepfake_attack.py`). O DiffAE leva ≈11 s por imagem; com 100 imagens, a avaliação completa leva ≈30 min.
-
-### Avaliar com o código corretor de erros (BCH)
-
-```bash
-python avaliar_bch.py --models_path "$CK" --output results/bch_v3_2000.csv
-```
-
-- Cada imagem recebe uma mensagem de 15 bits diferente, codificada em 30 bits com `bch_codec.py`, e a extração é decodificada (até 3 bits errados são corrigidos).
-- Por ataque: acurácia de bits, marca exata sem BCH, **mensagem recuperada com BCH**, falha avisada (mais de 3 erros, detectada) e erro silencioso (o BCH devolve uma mensagem errada sem avisar).
-- Aceita `--alpha` e `--limit` como o `evaluate.py`.
-
-Para usar o BCH no seu código:
-
-```python
-from bch_codec import BCH3015, int_to_bits, bits_to_int
-codec = BCH3015()
-bits30 = codec.encode(int_to_bits(12345))   # 30 bits para esconder na imagem
-msg15, n_corrigidos = codec.decode(bits_lidos)
-id_lido = bits_to_int(msg15) if msg15 is not None else None   # None = marca ilegível
-```
+Aplica também 7 deepfakes nas imagens marcadas: DiffAE (atributo `Young`), BlendFace, SimSwap, InSwapper, StarGAN (`Male`), HiSD (óculos) e LivePortrait. Cada imagem recebe uma identidade de origem fixa do mesmo gênero (`pares_origem.csv`). Exige os modelos de deepfake e um ambiente conda para cada um, que **não estão neste repositório**. Os caminhos ficam no início de `deepfake_attack.py` e podem ser trocados pelas variáveis de ambiente `DEEPFAKE_ROOT` (pasta com os modelos: `BlendFace/`, `SimSwap/`, `inswapper/`, `stargan/`, `HiSD/`, `LivePortrait/`, `diffae256/` e `origens_faceswap/`) e `CONDA_ENVS` (pasta dos ambientes conda, um por modelo: `blendeface`, `simswap`, `inswapper`, `stargan`, `liveportrait`, `diffae`). O DiffAE leva ≈11 s por imagem; com 100 imagens, a avaliação completa leva ≈30 min.
 
 ### Marcar uma imagem e ver a diferença
 
@@ -244,7 +222,7 @@ python train.py \
 ```
 
 - `--watermark_size` é o número de bits da marca.
-- Cada treino salva em `<output>/checkpoints/` um `*_model.pth` a cada 5.000 passos e o `*_final.pth` no fim (use o final), e os logs do TensorBoard em `<output>/logs/` (`tensorboard --logdir <output>/logs`).
+- Cada treino salva em `<output>/checkpoints/` um `*_model.pth` a cada 5.000 passos e o `*_final.pth` no fim (use o final), e os logs do TensorBoard em `<output>/logs/` (`tensorboard --logdir <output>/logs`). Checkpoints e logs não vão para o repositório (`.gitignore`), exceto `output/checkpoints/v3_final.pth`.
 - `--resume` carrega os pesos de um checkpoint e já começa com a loss da imagem no peso máximo; o alpha inicial vem do checkpoint.
 - Use um `--output` diferente para cada treino.
 
@@ -260,29 +238,38 @@ python train.py \
 
 ### Robustez
 
-| Ataque | Parâmetro | Marca exata (30 bits) | Bit Accuracy | Mensagem certa com BCH (15 bits) | Bit Accuracy com BCH (15 bits) |
-|---|---|---|---|---|---|
-| Nenhum | – | 100% | 100% | 100% | 100% |
-| JPEG | Q=75 | 99,2% | 99,97% | 100% | 100% |
-| JPEG | Q=50 | 85,0% | 99,41% | 99,95% | 99,99% |
-| JPEG | Q=30 | 25,9% | 95,45% | 94,3% | 99,08% |
-| Blur | σ=2 | 97,4% | 99,89% | 100% | 100% |
-| Median | 3×3 | 97,9% | 99,92% | 100% | 100% |
-| Median | 5×5 | 91,7% | 99,65% | 99,95% | 100% |
-| Ruído | σ=0,02 | 99,95% | 99,998% | 100% | 100% |
-| Ruído | σ=0,05 | 95,7% | 99,85% | 99,95% | 99,99% |
-| Salt & pepper | 1% | 99,8% | 99,99% | 100% | 100% |
-| Salt & pepper | 5% | 77,9% | 99,11% | 99,95% | 100% |
-| Dropout | 5% | 96,3% | 99,87% | 100% | 100% |
-| Dropout | 10% | 81,3% | 99,22% | 99,9% | 99,99% |
-| Dropout | 20% | 44,2% | 96,54% | 95,1% | 99,19% |
-| Resize | 0,5 | 92,4% | 99,67% | 99,85% | 99,98% |
-| Resize | 0,3 | 70,8% | 98,47% | 99,1% | 99,86% |
+| Ataque | Parâmetro | Marca exata (30 bits) | Bit Accuracy |
+|---|---|---|---|
+| Nenhum | – | 100% | 100% |
+| JPEG | Q=75 | 99,2% | 99,97% |
+| JPEG | Q=50 | 85,0% | 99,41% |
+| JPEG | Q=30 | 25,9% | 95,45% |
+| Blur | σ=2 | 97,4% | 99,89% |
+| Median | 3×3 | 97,9% | 99,92% |
+| Median | 5×5 | 91,7% | 99,65% |
+| Ruído | σ=0,02 | 99,95% | 99,998% |
+| Ruído | σ=0,05 | 95,7% | 99,85% |
+| Salt & pepper | 1% | 99,8% | 99,99% |
+| Salt & pepper | 5% | 77,9% | 99,11% |
+| Dropout | 5% | 96,3% | 99,87% |
+| Dropout | 10% | 81,3% | 99,22% |
+| Dropout | 20% | 44,2% | 96,54% |
+| Resize | 0,5 | 92,4% | 99,67% |
+| Resize | 0,3 | 70,8% | 98,47% |
 
-- "Bit Accuracy com BCH" é a fração dos 15 bits de mensagem certos depois da correção; quando o BCH não consegue corrigir, conta os 15 bits como foram lidos.
-- "Marca exata" exige os 30 bits certos. Com BCH, a mensagem de 15 bits é recuperada em **≥ 99% das imagens em 13 dos 15 ataques**; ficam abaixo o JPEG Q30 (94,3%) e o dropout de 20% (95,1%). Mais de 3 bits errados geram, na maioria das vezes, um aviso de marca ilegível; respostas erradas sem aviso ficam em ≤ 0,9%.
+- "Marca exata" exige os 30 bits certos; "Bit Accuracy" é a fração de bits certos. A Bit Accuracy fica acima de 95% em todos os ataques.
 - O dropout de 50% foi retirado da avaliação: ele zera metade dos pixels e degrada a imagem a ponto de ela perder o uso (PSNR ≈9 dB), então não representa um ataque realista.
-- CSVs: `results/op3_2000_50ep_finetune/` (`evaluate.py`) e `results/bch_v3_2000_alpha5.csv` (BCH).
+- Os CSVs são gerados pelo comando de [avaliação](#avaliar-a-robustez-métricas-principais) e não estão no repositório.
+
+### Deepfakes
+
+`evaluate.py --deepfake true --limit 200` (100 imagens femininas e 100 masculinas). Bit Accuracy da marca depois de cada deepfake:
+
+| DiffAE (Young) | BlendFace | SimSwap | InSwapper | StarGAN (Male) | HiSD (óculos) | LivePortrait |
+|---|---|---|---|---|---|---|
+| 99,98% | 100% | 99,95% | 99,73% | 99,82% | 99,33% | 83,85% |
+
+A marca sobrevive a todos os deepfakes de troca de rosto e de edição de atributo. O ponto fraco é a reencenação do LivePortrait, que redesenha o rosto com outra pose e expressão.
 
 ### Aparência da marca
 
@@ -292,9 +279,8 @@ python train.py \
 
 ### Limitações
 
-- **Dropout de 20%** e **JPEG Q30** ainda perdem bits (44% e 26% de marca exata); com BCH, ≈95% e ≈94%.
-- **Capacidade com BCH:** 15 bits = 32.768 mensagens diferentes. Para 30 bits de mensagem com a mesma proteção, a rede teria que esconder ≈48 bits (novo treino).
-- **Deepfakes ainda não avaliados** nesta versão (comando acima).
+- **Dropout de 20%** e **JPEG Q30** ainda perdem alguns bits: 44% e 26% das imagens com a marca exata (96,5% e 95,5% de Bit Accuracy).
+- **LivePortrait** (reencenação) é o deepfake mais difícil: 83,9% de Bit Accuracy.
 - **Textura residual:** sem a grade, mas a diferença amplificada mostra uma textura fina, com leve orientação diagonal.
 
 ## Arquivos principais
@@ -307,10 +293,11 @@ python train.py \
 | `train.py` | treino (`--attack_set`, `--resume`, `--lr_schedule`, `--subband_weights`, `--lpips_weight`, …) |
 | `evaluate.py` | avaliação com 16 ataques e, opcionalmente, 7 deepfakes |
 | `deepfake_attack.py` | chamada dos modelos de deepfake externos |
-| `bch_codec.py`, `avaliar_bch.py` | código corretor de erros BCH(30, 15) e sua avaliação |
 | `collect_image_by_diff.py`, `watermark_diff.py` | marcar uma imagem e visualizar a diferença |
 | `gerar_imagens_ataques.py` | imagem de referência marcada sob cada ataque (imagens e grid) |
 | `gerar_figura_arquitetura.py` | figura da arquitetura (`my_tests/arquitetura/`) |
+| `analisar_se.py` | pesos que o bloco Squeeze-and-Excitation dá a cada sub-banda, por ataque |
+| `output/checkpoints/v3_final.pth` | checkpoint do modelo atual |
 | `output_subbandas/avaliar_ablacao.py` | comparar vários checkpoints de uma pasta |
 | `utils.py` | DWT/DCT em blocos e funções auxiliares |
 | `environment.yml` | ambiente conda |

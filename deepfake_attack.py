@@ -7,28 +7,38 @@ import shutil
 import subprocess
 import tempfile
 
-BLENDFACE_PYTHON = "/home/cnt-computadores/miniconda3/envs/blendeface/bin/python"
-BLENDFACE_DIR = "/home/cnt-computadores/Área de trabalho/FelipeNascimento/models_deepfake/BlendFace/swapping"
+# Caminhos dos modelos de deepfake e dos ambientes conda de cada um (usados só na
+# avaliação com deepfakes). Em outra máquina, defina as variáveis de ambiente
+# DEEPFAKE_ROOT (pasta com os modelos) e CONDA_ENVS (pasta dos ambientes conda).
+DEEPFAKE_ROOT = os.environ.get(
+    "DEEPFAKE_ROOT", "/home/cnt-computadores/Área de trabalho/FelipeNascimento/models_deepfake")
+CONDA_ENVS = os.environ.get("CONDA_ENVS", "/home/cnt-computadores/miniconda3/envs")
+
+
+def conda_python(env):
+    return os.path.join(CONDA_ENVS, env, "bin", "python")
+
+
+BLENDFACE_PYTHON = conda_python("blendeface")
+BLENDFACE_DIR = os.path.join(DEEPFAKE_ROOT, "BlendFace", "swapping")
 BLENDFACE_WEIGHTS = os.path.join(BLENDFACE_DIR, "checkpoints", "blendswap.pth")
 BLENDFACE_SOURCE = os.path.join(BLENDFACE_DIR, "examples", "source.png")
 
-DEEPFAKE_ROOT = "/home/cnt-computadores/Área de trabalho/FelipeNascimento/models_deepfake"
-
-SIMSWAP_PYTHON = "/home/cnt-computadores/miniconda3/envs/simswap/bin/python"
+SIMSWAP_PYTHON = conda_python("simswap")
 SIMSWAP_DIR = os.path.join(DEEPFAKE_ROOT, "SimSwap")
 SIMSWAP_SOURCE = os.path.join(SIMSWAP_DIR, "source.jpg")
 
-INSWAPPER_PYTHON = "/home/cnt-computadores/miniconda3/envs/inswapper/bin/python"
+INSWAPPER_PYTHON = conda_python("inswapper")
 INSWAPPER_DIR = os.path.join(DEEPFAKE_ROOT, "inswapper")
 INSWAPPER_SOURCE = SIMSWAP_SOURCE    # mesma identidade de origem do SimSwap
 
-STARGAN_PYTHON = "/home/cnt-computadores/miniconda3/envs/stargan/bin/python"
+STARGAN_PYTHON = conda_python("stargan")
 STARGAN_DIR = os.path.join(DEEPFAKE_ROOT, "stargan")
 
 HISD_PYTHON = STARGAN_PYTHON         # mesmo ambiente do StarGAN
 HISD_DIR = os.path.join(DEEPFAKE_ROOT, "HiSD")
 
-LIVEPORTRAIT_PYTHON = "/home/cnt-computadores/miniconda3/envs/liveportrait/bin/python"
+LIVEPORTRAIT_PYTHON = conda_python("liveportrait")
 LIVEPORTRAIT_DIR = os.path.join(DEEPFAKE_ROOT, "LivePortrait")
 
 class DeepFakeAttack:
@@ -206,19 +216,14 @@ class DeepFakeAttack:
     ):
 
 
-        DIFFAE_PYTHON = (
-            "/home/cnt-computadores/miniconda3/envs/diffae/bin/python"
-        )
+        DIFFAE_PYTHON = conda_python("diffae")
 
         # DiffAE na mesma resolução do modelo de marca d'água
         # (diffae128 usa FFHQ128; diffae256 usa FFHQ256)
         if image_resolution not in (128, 256):
             raise ValueError(f"Não há DiffAE para {image_resolution}x{image_resolution} (só 128 ou 256).")
 
-        DIFFAE_DIR = (
-            "/home/cnt-computadores/Área de trabalho/"
-            f"FelipeNascimento/models_deepfake/diffae{image_resolution}"
-        )
+        DIFFAE_DIR = os.path.join(DEEPFAKE_ROOT, f"diffae{image_resolution}")
 
         # converter caminhos relativos para absolutos
         input_zip = os.path.abspath(input_zip)

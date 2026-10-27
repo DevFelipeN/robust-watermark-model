@@ -13,3 +13,4 @@ __pycache__/
 !output/checkpoints/v3_final.pth
 # logs do TensorBoard
 output/logs/
+my_README.md

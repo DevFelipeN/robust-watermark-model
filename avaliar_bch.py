@@ -77,7 +77,7 @@ def limit_by_gender(paths, limit):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--models_path", default=None,
-                        help="Padrão: output_grade/op3_v2_geometrico/checkpoints/*_final.pth")
+                        help="Padrão: output/checkpoints/v3_final.pth")
     parser.add_argument("--alpha", type=float, default=None, help="Padrão: o alpha do checkpoint.")
     parser.add_argument("--celeba_val_dir", default=os.path.join(HERE, "Dataset/celeba_hq/val"))
     parser.add_argument("--limit", type=int, default=None, help="N imagens, metade de cada gênero (padrão: todas).")
@@ -86,8 +86,7 @@ def main():
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    models_path = args.models_path or glob.glob(
-        os.path.join(HERE, "output_grade", "op3_v2_geometrico", "checkpoints", "*_final.pth"))[0]
+    models_path = args.models_path or os.path.join(HERE, "output", "checkpoints", "v3_final.pth")
 
     ck = torch.load(models_path, map_location=device)
     nb, grid = ck["num_bits"], ck["watermark_size"]

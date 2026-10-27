@@ -41,9 +41,7 @@ from watermark_embedding import WatermarkEmbedding, watermark_embedding_tensor
 from watermark_extraction import WatermarkExtraction
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_CHECKPOINT = os.path.join(
-    HERE, "output_grade", "v3_finetune_cosine", "checkpoints",
-    "watermark_Y_DCT_DWT_12102026_08:55:13_final.pth")
+DEFAULT_CHECKPOINT = os.path.join(HERE, "output", "checkpoints", "v3_final.pth")
 
 # Mesmos ataques e parâmetros do evaluate.py
 ATTACK_CASES = [
