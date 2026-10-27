@@ -9,3 +9,7 @@ output_fragil/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+# checkpoint do modelo atual (exceção à regra *.pth)
+!output/checkpoints/v3_final.pth
+# logs do TensorBoard
+output/logs/
