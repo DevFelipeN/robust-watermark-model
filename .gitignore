@@ -1,0 +1,11 @@
+Dataset
+results/
+output_grade/
+output_fragil/
+*.pth
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
